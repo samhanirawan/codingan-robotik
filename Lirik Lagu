@@ -1,0 +1,38 @@
+#include <LiquidCrystal_I2C.h>
+const int col = 16;
+const int row = 2;
+
+LiquidCrystal_I2C lcd(0x27, col, row);
+
+String lirik[][2] = {
+    {"Itulah Kenapa", "Jatuh Cinta"},
+    {"Dikatakan Jatuh"},
+    {"Karna Sbagaimana", "Kita Jatuh"},
+    {"Kita Tidak", "Punya Kuasa"},
+    {"pilih Jatuuhh"},
+    {"Pada hati", "yang mana"},
+    {"bisa kutahan", ""},
+    {"Senyum", "sederhanamuu"},
+    {"Karena tidak", "bisa kupunyai"},
+    {"Maka ku", "Doakan kisah"},
+    {"Kita Satu", ""},
+    {"Di dunia", "Yang nantiiiiiii"},
+};
+
+int dl[] = {2000, 2000, 2000, 2000, 2000, 1330, 1350, 1300, 1450, 1240, 1310, 2300,};
+
+void setup(){
+    lcd.init();
+    lcd.backlight();
+}
+
+void loop(){
+    for (int i = 0; i < 12; i++) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(lirik[i][0]);
+    lcd.setCursor(0, 1);
+    lcd.print(lirik[i][1]);
+    delay(dl[i]);
+        }
+}
