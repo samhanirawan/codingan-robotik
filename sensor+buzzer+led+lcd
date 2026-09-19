@@ -1,0 +1,58 @@
+#include <Wire.h>                  // Pustaka untuk komunikasi I2C
+#include <LiquidCrystal_I2C.h>     // Pustaka untuk LCD I2C
+
+// Inisialisasi alamat I2C (biasanya 0x27 atau 0x3F) dengan ukuran 16x2
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+
+
+const int trigPin=6;
+const int echoPin=7;
+const int ledPin=2;
+const int buzzerPin=3;
+
+
+void setup(){
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  Serial.begin(9600);  
+
+  lcd.init();                     
+  lcd.backlight();  
+  
+
+  lcd.setCursor(0, 0);            
+  lcd.print("Ada gerakan");     
+  
+  lcd.setCursor(0, 1);         
+  lcd.print("terdeteksi");    
+}
+void loop(){
+digitalWrite(trigPin, LOW);
+delayMicroseconds(2);
+
+
+digitalWrite(trigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(trigPin, LOW);
+
+
+long duration= pulseIn(echoPin, HIGH);
+int distance = duration * 0.034 / 2; 
+Serial.print("jarak: ");
+Serial.print(distance);
+Serial.println(" cm");
+
+if (distance < 30) {
+  digitalWrite (buzzerPin, LOW);
+  digitalWrite (ledPin, HIGH);
+lcd.setBacklight(HIGH);
+} else {
+  digitalWrite (buzzerPin, HIGH);
+  digitalWrite (ledPin, LOW);
+lcd.setBacklight(LOW);
+}
+
+delay(100);
+}
