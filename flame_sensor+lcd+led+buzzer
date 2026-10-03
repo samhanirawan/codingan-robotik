@@ -1,0 +1,40 @@
+#include <Wire.h>                  
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd (0x27, 16, 2);
+const int flamePin = 2; 
+const int ledPin = 3;
+const int buzzerPin = 4; 
+
+
+void setup() {
+  lcd.init();                     
+  lcd.backlight();  
+  pinMode(flamePin, INPUT);    
+  pinMode(ledPin, OUTPUT);  
+  pinMode(buzzerPin, OUTPUT);  
+  Serial.begin(9600);       
+ 
+}
+
+void loop() {
+int flameStatus = digitalRead(flamePin);
+
+lcd.setCursor(0,0);
+
+lcd.setCursor(0,1);
+  if (flameStatus == LOW) {
+    digitalWrite(ledPin, HIGH);            
+    lcd.print("API TERDETEKSI!!!"); 
+    digitalWrite (buzzerPin, LOW);
+    delay(1000);
+ lcd.clear();   
+
+  } else {
+    digitalWrite(ledPin, LOW); 
+     lcd.print("TIDAK ADA API");               
+    digitalWrite (buzzerPin, HIGH);
+  }
+
+  
+  delay(100); 
+}
