@@ -1,0 +1,22 @@
+int pirPin=2;
+int buzzerPin=3;
+int nilaiPIR=0;
+
+void setup(){
+  pinMode(pirPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  Serial.begin(9600);
+
+}
+void loop(){
+  nilaiPIR=digitalRead(pirPin);
+
+  if(nilaiPIR==LOW){
+    digitalWrite(buzzerPin, LOW);
+    Serial.println("Gerakan terdeteksi!");
+  }else{
+     digitalWrite(buzzerPin, HIGH);
+    Serial.println("Tidak ada gerakan.");
+  }
+  delay(500);
+}
