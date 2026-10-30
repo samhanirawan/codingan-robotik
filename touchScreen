@@ -1,0 +1,18 @@
+const int sensorPin = 2; // Pin digital tempat sensor sentuh dihubungkan
+
+void setup() {
+  pinMode(sensorPin, INPUT);  // Mengatur pin sensor sebagai input
+  Serial.begin(9600);         // Memulai komunikasi Serial Monitor
+}
+
+void loop() {
+  int sensorValue = digitalRead(sensorPin); // Membaca status dari sensor
+
+  if (sensorValue == HIGH) { // Jika sensor disentuh
+    Serial.println("Sensor Disentuh");
+  } else { // Jika tidak disentuh
+    Serial.println("Sensor Tidak Disentuh");
+  }
+  
+  delay(100); // Jeda kecil untuk kestabilan pembacaan
+}
