@@ -1,17 +1,29 @@
+#include <Servo.h>
+
 const int sensorPin = 2; // Pin digital tempat sensor sentuh dihubungkan
+const int servoPin = 10;
+
+Servo myServo;
+int pos = 0;    // Variabel untuk menyimpan posisi sudut
 
 void setup() {
   pinMode(sensorPin, INPUT);  // Mengatur pin sensor sebagai input
+  myServo.attach(10);
+  myServo.write(0); // Posisi awal tutup sampah tertutup (0 derajat)
   Serial.begin(9600);         // Memulai komunikasi Serial Monitor
 }
 
 void loop() {
   int sensorValue = digitalRead(sensorPin); // Membaca status dari sensor
 
-  if (sensorValue == HIGH) { // Jika sensor disentuh
+  if (sensorValue == HIGH) {
     Serial.println("Sensor Disentuh");
-  } else { // Jika tidak disentuh
+    myServo.write(90); // Membuka tutup tempat sampah (90 derajat)
+    delay(3000);       // Menahan posisi terbuka selama 3 detik
+
+  } else {
     Serial.println("Sensor Tidak Disentuh");
+    myServo.write(0);  // Menutup kembali tutup tempat sampah (0 derajat)
   }
   
   delay(100); // Jeda kecil untuk kestabilan pembacaan
