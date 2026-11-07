@@ -1,0 +1,62 @@
+#include <Servo.h>
+
+// Deklarasi Objek Servo
+Servo myServo;
+
+// Penentuan Pin Komponen
+const int sensorHujanPin = A0;  // Pin analog sensor hujan
+const int ledMerahPin    = 4;   // LED indikator hujan (atap menutup)
+const int ledHijauPin    = 2;  // LED indikator cerah (atap membuka)
+const int buzzerPin      = 12;   // Pin buzzer alarm
+const int servoPin       = 5;
+
+// Batas nilai sensor (threshold) - sesuaikan dengan sensitivitas modul sensor Anda
+// Nilai analog umumnya 0 (sangat basah) sampai 1023 (sangat kering)
+const int batasBasah = 600; 
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Inisialisasi Pin I/O
+  pinMode(sensorHujanPin, INPUT);
+  pinMode(ledMerahPin, OUTPUT);
+  pinMode(ledHijauPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(servoPin, OUTPUT);
+  
+  // Hubungkan servo ke pin 9
+  myServo.attach(5);
+  
+  // Posisi awal servo (misal kondisi cerah / buka di 0 derajat)
+  myServo.write(0);
+  digitalWrite(ledHijauPin, HIGH);
+  digitalWrite(ledMerahPin, LOW);
+  digitalWrite(buzzerPin, LOW);
+  myServo.write(0);
+}
+
+void loop() {
+  // Membaca nilai dari sensor hujan (analog)
+  int nilaiSensor = analogRead(sensorHujanPin);
+  
+  // Menampilkan nilai sensor di Serial Monitor untuk debugging
+  Serial.print("Nilai Sensor Hujan: ");
+  Serial.println(nilaiSensor);
+  
+  // Kondisi: Jika nilai di bawah batas, berarti terkena air/hujan
+  if (nilaiSensor < batasBasah) {
+    // Hujan Terdeteksi
+    myServo.write(180);           // Putar servo ke posisi menutup (180 derajat)
+    digitalWrite(ledMerahPin, HIGH);  // Nyalakan LED Merah
+    digitalWrite(ledHijauPin, LOW);   // Matikan LED Hijau
+    digitalWrite(buzzerPin, LOW);    // Nyalakan Buzzer
+  } else {
+    // Kondisi Cerah / Kering
+    myServo.write(0);             // Putar servo ke posisi membuka (0 derajat)
+    digitalWrite(ledMerahPin, LOW);   // Matikan LED Merah
+    digitalWrite(ledHijauPin, HIGH);  // Nyalakan LED Hijau
+    digitalWrite(buzzerPin, HIGH);     // Matikan Buzzer
+  }
+  
+  delay(500); // Jeda pembacaan
+}
