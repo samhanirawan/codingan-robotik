@@ -1,0 +1,102 @@
+#include <Servo.h>
+
+const byte PIN_LAMP = 2;
+const byte PIN_GAS = 3;
+const byte PIN_FLAME = 4;
+const byte PIN_SOUND = 5;
+const byte PIN_TOUCH = 6;
+const byte PIN_ROOF = 10;
+
+const byte PIN_DOOR_SERVO = 7;
+const byte PIN_VENT_SERVO = 8;
+const byte PIN_ROOF_SERVO = 9;
+
+const unsigned long DOOR_OPEN_TIME = 3000UL;
+const unsigned long SOUND_DEBOUNCE = 250UL;
+
+Servo doorServo;
+Servo ventServo;
+Servo roofServo;
+
+bool lampOn = false;
+bool doorOpen = false;
+bool previousSound = LOW;
+
+unsigned long doorOpenedAt = 0;
+unsigned long lastSoundEvent = 0;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(PIN_LAMP, OUTPUT);
+  pinMode(PIN_GAS, INPUT);
+  pinMode(PIN_FLAME, INPUT);
+  pinMode(PIN_SOUND, INPUT);
+  pinMode(PIN_TOUCH, INPUT);
+  pinMode(PIN_ROOF, INPUT);
+
+  doorServo.attach(PIN_DOOR_SERVO);
+  ventServo.attach(PIN_VENT_SERVO);
+  roofServo.attach(PIN_ROOF_SERVO);
+
+  doorServo.write(0);
+  ventServo.write(0);
+  roofServo.write(0);
+  
+}
+
+void updateRoof() {
+  if (digitalRead(PIN_ROOF) == LOW) {
+    roofServo.write(90);
+  } else {
+    roofServo.write(0);
+  }
+}
+
+void updateDoor() {
+  if (digitalRead(PIN_TOUCH) == HIGH && !doorOpen) {
+    doorServo.write(90);
+    doorOpen = true;
+    doorOpenedAt = millis();
+  }
+
+  if (doorOpen && millis() - doorOpenedAt >= DOOR_OPEN_TIME) {
+    doorServo.write(0);
+    doorOpen = false;
+  }
+}
+
+void updateSafetyVentilation() {
+  // These modules are commonly active LOW when detecting a hazard.
+  bool flameDetected = digitalRead(PIN_FLAME) == HIGH;
+  bool gasDetected = digitalRead(PIN_GAS) == HIGH;
+
+  if (flameDetected || gasDetected) {
+    ventServo.write(90);
+  } else {
+    ventServo.write(0);
+  }
+}
+
+void updateSoundLamp() {
+  bool soundDetected = digitalRead(PIN_SOUND) == HIGH;
+  unsigned long now = millis();
+
+  if (soundDetected && !previousSound &&
+      now - lastSoundEvent >= SOUND_DEBOUNCE) {
+    lampOn = !lampOn;
+    digitalWrite(PIN_LAMP, lampOn ? HIGH : LOW);
+    lastSoundEvent = now;
+  }
+
+  previousSound = soundDetected;
+}
+
+void loop() {
+  updateDoor();
+  updateSafetyVentilation();
+  updateSoundLamp();
+  updateRoof();
+
+  delay(10);
+}
