@@ -1,0 +1,282 @@
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ESP32Servo.h>
+
+// Ganti dengan nama WiFi dan password Anda (Harus 2.4 GHz)
+const char* ssid = "NAMA_WIFI_ANDA";
+const char* password = "PASSWORD_WIFI_ANDA";
+
+Servo servoTutup;
+const int servoPin = 13; // Kabel sinyal servo ke GPIO 13
+
+// Pengaturan sudut buka dan tutup (sesuaikan dengan mekanik tutup sampah Anda)
+const int SUDUT_TUTUP = 0;
+const int SUDUT_BUKA = 90;
+
+// Pengaturan tutup otomatis (5000 ms = 5 detik)
+const unsigned long WAKTU_AUTO_TUTUP = 5000; 
+unsigned long waktuTerakhirBuka = 0;
+bool statusTerbuka = false;
+
+WebServer server(80);
+
+// Tampilan website modern dengan animasi ikon & badge status
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Trash Bin - ESP32</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 36px 28px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      color: #f1f5f9;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 28px;
+    }
+    /* Ilustrasi Tempat Sampah SVG */
+    .bin-visual {
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 24px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.3s ease;
+    }
+    .bin-visual.open {
+      border-color: rgba(16, 185, 129, 0.5);
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+    }
+    svg { width: 54px; height: 54px; overflow: visible; }
+    #bin-lid {
+      transform-origin: 48px 18px;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .bin-visual.open #bin-lid {
+      transform: rotate(38deg) translateY(-4px);
+    }
+    /* Status Badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 28px;
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      transition: all 0.3s ease;
+    }
+    .status-badge.open {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+    /* Tombol Kontrol */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      color: white;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s;
+    }
+    button:active { transform: scale(0.97); }
+    .btn-buka {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+    }
+    .btn-buka:hover { opacity: 0.95; }
+    .btn-tutup {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
+    }
+    .btn-tutup:hover { opacity: 0.95; }
+    .footer-note {
+      margin-top: 22px;
+      font-size: 12px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Smart Trash Bin</h1>
+    <p class="subtitle">Kontrol Tutup Otomatis ESP32</p>
+
+    <div class="bin-visual" id="binVisual">
+      <svg viewBox="0 0 64 64" fill="none" stroke="#e2e8f0" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Badan Tempat Sampah -->
+        <path d="M18 24 L21 54 C21.3 56.3 23.2 58 25.5 58 H38.5 C40.8 58 42.7 56.3 43 54 L46 24" fill="rgba(148, 163, 184, 0.15)"/>
+        <line x1="27" y1="32" x2="28" y2="50"/>
+        <line x1="37" y1="32" x2="36" y2="50"/>
+        <!-- Tutup Tempat Sampah (Bisa Beranimasi) -->
+        <g id="bin-lid">
+          <line x1="14" y1="18" x2="50" y2="18"/>
+          <path d="M26 18 V13 C26 11.9 26.9 11 28 11 H36 C37.1 11 38 11.9 38 13 V18"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="status-badge" id="statusBadge">
+      <span class="dot"></span>
+      <span id="statusText">TERTUTUP</span>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-buka" onclick="kontrolSampah('buka')">BUKA TUTUP</button>
+      <button class="btn-tutup" onclick="kontrolSampah('tutup')">TUTUP SEKARANG</button>
+    </div>
+
+    <p class="footer-note">Otomatis tertutup kembali dalam 5 detik</p>
+  </div>
+
+  <script>
+    function updateUI(status) {
+      const text = document.getElementById('statusText');
+      const badge = document.getElementById('statusBadge');
+      const visual = document.getElementById('binVisual');
+
+      text.innerText = status;
+      if (status === 'TERBUKA') {
+        badge.classList.add('open');
+        visual.classList.add('open');
+      } else {
+        badge.classList.remove('open');
+        visual.classList.remove('open');
+      }
+    }
+
+    function kontrolSampah(aksi) {
+      fetch('/aksi?cmd=' + aksi)
+        .then(res => res.text())
+        .then(data => updateUI(data));
+    }
+
+    setInterval(() => {
+      fetch('/status')
+        .then(res => res.text())
+        .then(data => updateUI(data));
+    }, 1000);
+  </script>
+</body>
+</html>
+)rawliteral";
+
+void bukaTempatSampah() {
+  servoTutup.write(SUDUT_BUKA);
+  statusTerbuka = true;
+  waktuTerakhirBuka = millis();
+  Serial.println("Tempat sampah DIBUKA");
+}
+
+void tutupTempatSampah() {
+  servoTutup.write(SUDUT_TUTUP);
+  statusTerbuka = false;
+  Serial.println("Tempat sampah DITUTUP");
+}
+
+void handleRoot() {
+  server.send(200, "text/html", index_html);
+}
+
+void handleAksi() {
+  if (server.hasArg("cmd")) {
+    String cmd = server.arg("cmd");
+    if (cmd == "buka") {
+      bukaTempatSampah();
+      server.send(200, "text/plain", "TERBUKA");
+    } else if (cmd == "tutup") {
+      tutupTempatSampah();
+      server.send(200, "text/plain", "TERTUTUP");
+    } else {
+      server.send(400, "text/plain", "Perintah tidak valid");
+    }
+  }
+}
+
+void handleStatus() {
+  server.send(200, "text/plain", statusTerbuka ? "TERBUKA" : "TERTUTUP");
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  servoTutup.attach(servoPin);
+  tutupTempatSampah();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Menghubungkan ke WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nTerhubung! Buka IP berikut di browser:");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", handleRoot);
+  server.on("/aksi", handleAksi);
+  server.on("/status", handleStatus);
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+
+  if (statusTerbuka && (millis() - waktuTerakhirBuka >= WAKTU_AUTO_TUTUP)) {
+    tutupTempatSampah();
+  }
+}
